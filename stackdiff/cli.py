@@ -6,39 +6,53 @@ from pathlib import Path
 
 import click
 
-from stackdiff.diff import diff_plans
+from stackdiff.diff import build_report
+from stackdiff.export import to_csv, to_json
+from stackdiff.filter import FilterOptions, filter_report
 from stackdiff.formatter import format_report
 from stackdiff.parser import parse_plan_text
+from stackdiff.summary import format_summary, summarize
 
 
 @click.command()
-@click.argument("base_plan", type=click.Path(exists=True, dir_okay=False))
-@click.argument("head_plan", type=click.Path(exists=True, dir_okay=False))
-@click.option("--no-color", is_flag=True, default=False, help="Disable ANSI colors.")
-@click.option(
-    "--exit-code",
-    is_flag=True,
-    default=False,
-    help="Exit with code 1 if changes are detected.",
-)
+@click.argument("plan_file", type=click.Path(exists=True, dir_okay=False))
+@click.option("--action", "actions", multiple=True, help="Filter by action (create/update/destroy).")
+@click.option("--type", "resource_types", multiple=True, help="Filter by resource type.")
+@click.option("--module", "modules", multiple=True, help="Filter by module prefix.")
+@click.option("--summary", "show_summary", is_flag=True, default=False, help="Show summary only.")
+@click.option("--output", "output_format", type=click.Choice(["text", "json", "csv"]), default="text", show_default=True, help="Output format.")
+@click.option("--no-color", is_flag=True, default=False, help="Disable colored output.")
 def main(
-    base_plan: str,
-    head_plan: str,
+    plan_file: str,
+    actions: tuple[str, ...],
+    resource_types: tuple[str, ...],
+    modules: tuple[str, ...],
+    show_summary: bool,
+    output_format: str,
     no_color: bool,
-    exit_code: bool,
 ) -> None:
-    """Diff two Terraform plan text outputs (BASE_PLAN vs HEAD_PLAN)."""
-    base_text = Path(base_plan).read_text()
-    head_text = Path(head_plan).read_text()
+    """Diff and audit Terraform plan outputs."""
+    text = Path(plan_file).read_text()
+    changes = parse_plan_text(text)
+    report = build_report(changes)
 
-    base_changes = parse_plan_text(base_text)
-    head_changes = parse_plan_text(head_text)
+    opts = FilterOptions(
+        actions=list(actions) or None,
+        resource_types=list(resource_types) or None,
+        modules=list(modules) or None,
+    )
+    report = filter_report(report, opts)
 
-    report = diff_plans(base_changes, head_changes)
-    click.echo(format_report(report, use_color=not no_color))
-
-    if exit_code and report.has_changes:
-        sys.exit(1)
+    if output_format == "json":
+        click.echo(to_json(report))
+    elif output_format == "csv":
+        click.echo(to_csv(report), nl=False)
+    else:
+        if show_summary:
+            click.echo(format_summary(summarize(report), color=not no_color))
+        else:
+            click.echo(format_report(report, color=not no_color))
+            click.echo(format_summary(summarize(report), color=not no_color))
 
 
 if __name__ == "__main__":
