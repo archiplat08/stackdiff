@@ -56,3 +56,22 @@ def to_csv(report: DiffReport) -> str:
             "action": entry.action.value,
         })
     return output.getvalue()
+
+
+def to_markdown(report: DiffReport) -> str:
+    """Export a DiffReport as a Markdown summary table.
+
+    Returns a string containing a Markdown-formatted table of all changes,
+    preceded by a brief summary line.
+    """
+    summary = summarize(report)
+    lines = [
+        f"**Changes:** {summary.added} added, {summary.removed} removed, "
+        f"{summary.changed} changed (total: {summary.total})",
+        "",
+        "| Address | Type | Action |",
+        "|---------|------|--------|",
+    ]
+    for entry in report.entries:
+        lines.append(f"| {entry.address} | {entry.resource_type} | {entry.action.value} |")
+    return "\n".join(lines) + "\n"
