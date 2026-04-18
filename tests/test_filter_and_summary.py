@@ -7,7 +7,7 @@ from stackdiff.summary import summarize, format_summary
 
 
 def _make_report(*specs):
-    """specs: list of (address, action_str)"""
+    """Build a DiffReport from (address, action_str) tuples."""
     entries = []
     for address, action_str in specs:
         change = ResourceChange(
@@ -30,6 +30,17 @@ def test_filter_by_action():
     result = filter_report(report, opts)
     assert len(result.entries) == 1
     assert result.entries[0].change.address == "aws_instance.web"
+
+
+def test_filter_by_action_empty_result():
+    """Filtering by an action not present in the report returns no entries."""
+    report = _make_report(
+        ("aws_instance.web", "create"),
+        ("aws_s3_bucket.data", "update"),
+    )
+    opts = FilterOptions(actions=["delete"])
+    result = filter_report(report, opts)
+    assert len(result.entries) == 0
 
 
 def test_filter_by_resource_type():
