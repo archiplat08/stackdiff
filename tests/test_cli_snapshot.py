@@ -35,6 +35,10 @@ def snap_dir(tmp_path):
 
 
 def _run(args: list[str]):
+    """Parse *args* and execute the corresponding snapshot sub-command.
+
+    Returns the integer return-code produced by ``_cmd_snapshot``.
+    """
     parser = build_parser()
     ns = parser.parse_args(args)
     return _cmd_snapshot(ns)
@@ -61,6 +65,12 @@ def test_list_shows_saved_names(plan_file, snap_dir, capsys):
     out = capsys.readouterr().out
     assert "v1" in out
     assert "v2" in out
+
+
+def test_list_empty_dir_exits_zero(snap_dir, capsys):
+    """Listing snapshots in an empty (or non-existent) directory should not error."""
+    rc = _run(["snapshot", "list", "--dir", snap_dir])
+    assert rc == 0
 
 
 def test_show_exits_zero(plan_file, snap_dir, capsys):
@@ -92,3 +102,11 @@ def test_delete_exits_zero(plan_file, snap_dir):
 def test_delete_missing_exits_one(snap_dir):
     rc = _run(["snapshot", "delete", "ghost", "--dir", snap_dir])
     assert rc == 1
+
+
+def test_delete_removes_snapshot(plan_file, snap_dir):
+    """After deletion the snapshot should no longer appear in the list output."""
+    _run(["snapshot", "save", "v1", plan_file, "--dir", snap_dir])
+    _run(["snapshot", "delete", "v1", "--dir", snap_dir])
+    from stackdiff.snapshot import load_snapshot
+    assert load_snapshot("v1", snap_dir) is None
