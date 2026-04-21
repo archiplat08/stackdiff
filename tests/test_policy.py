@@ -98,12 +98,29 @@ def test_violation_message_format():
 
 def test_custom_rule():
     custom = PolicyRule(
-        name="no-rds",
-        description="Block RDS changes",
+        name="no-s3-delete",
         severity="block",
-        check=lambda e: e.resource_change.resource_type.startswith("aws_db"),
+        match=lambda entry: (
+            entry.resource_change.resource_type == "aws_s3_bucket"
+            and entry.resource_change.action == ChangeAction.DELETE
+        ),
     )
-    report = _report(_make_entry(ChangeAction.UPDATE, rtype="aws_db_instance"))
+    report = _report(_make_entry(ChangeAction.DELETE, rtype="aws_s3_bucket", name="assets"))
     result = evaluate_policy(report, [custom])
     assert len(result.violations) == 1
-    assert result.violations[0].rule_name == "no-rds"
+    assert result.violations[0].rule_name == "no-s3-delete"
+    assert result.has_blocks
+
+
+def test_custom_rule_no_match():
+    custom = PolicyRule(
+        name="no-s3-delete",
+        severity="block",
+        match=lambda entry: (
+            entry.resource_change.resource_type == "aws_s3_bucket"
+            and entry.resource_change.action == ChangeAction.DELETE
+        ),
+    )
+    report = _report(_make_entry(ChangeAction.CREATE, rtype="aws_s3_bucket", name="assets"))
+    result = evaluate_policy(report, [custom])
+    assert not result.violations
