@@ -24,6 +24,16 @@ class ImpactLevel(str, Enum):
     CRITICAL = "critical"
 
 
+# Ordering used for comparisons (e.g. "is this at least HIGH?")
+_LEVEL_ORDER = [
+    ImpactLevel.NONE,
+    ImpactLevel.LOW,
+    ImpactLevel.MEDIUM,
+    ImpactLevel.HIGH,
+    ImpactLevel.CRITICAL,
+]
+
+
 @dataclass(frozen=True)
 class ImpactResult:
     level: ImpactLevel
@@ -31,6 +41,10 @@ class ImpactResult:
     total_changes: int
     destructive: bool
     reason: str
+
+    def is_at_least(self, level: ImpactLevel) -> bool:
+        """Return True if this result's level is >= *level* in severity."""
+        return _LEVEL_ORDER.index(self.level) >= _LEVEL_ORDER.index(level)
 
 
 def _label(level: ImpactLevel) -> str:
