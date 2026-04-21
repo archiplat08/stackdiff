@@ -46,6 +46,10 @@ class RiskScore:
             return "high"
         return "critical"
 
+    def top_risks(self, n: int = 3) -> List[Dict]:
+        """Return the *n* highest-scoring entries, sorted descending by score."""
+        return sorted(self.per_entry, key=lambda x: x["score"], reverse=True)[:n]
+
 
 def _is_sensitive(resource_type: str) -> bool:
     return any(resource_type.startswith(p) for p in _SENSITIVE_TYPES)
