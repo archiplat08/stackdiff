@@ -31,6 +31,22 @@ def _add_label_parser(sub: argparse._SubParsersAction) -> None:  # type: ignore[
     )
 
 
+def _load_label_map(path: str) -> tuple[LabelMap, str | None]:
+    """Load and validate a label map from a JSON file.
+
+    Returns a tuple of (label_map, error_message). If loading succeeds,
+    error_message is None. If it fails, label_map is empty and error_message
+    describes the problem.
+    """
+    try:
+        raw = json.loads(Path(path).read_text())
+    except (OSError, json.JSONDecodeError) as exc:
+        return {}, f"ERROR: could not read labels file: {exc}"
+    if not isinstance(raw, dict):
+        return {}, "ERROR: labels file must be a JSON object"
+    return raw, None
+
+
 def _cmd_label(args: argparse.Namespace) -> int:
     plan_text = Path(args.plan).read_text()
     changes = parse_plan_text(plan_text)
@@ -38,11 +54,10 @@ def _cmd_label(args: argparse.Namespace) -> int:
 
     label_map: LabelMap = {}
     if args.labels:
-        raw = json.loads(Path(args.labels).read_text())
-        if not isinstance(raw, dict):
-            print("ERROR: labels file must be a JSON object", file=sys.stderr)
+        label_map, error = _load_label_map(args.labels)
+        if error:
+            print(error, file=sys.stderr)
             return 1
-        label_map = raw
 
     labeled = apply_labels(report, label_map)
 
