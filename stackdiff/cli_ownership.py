@@ -39,14 +39,32 @@ def _add_ownership_parser(sub: argparse._SubParsersAction) -> None:  # type: ign
     p.set_defaults(func=_cmd_ownership)
 
 
+def _load_owner_map(path: str) -> dict:
+    """Load and parse the owner map JSON file, with clear error messages."""
+    owner_map_path = Path(path)
+    if not owner_map_path.exists():
+        print(f"error: owner map file not found: {path}", file=sys.stderr)
+        sys.exit(2)
+    try:
+        return json.loads(owner_map_path.read_text())
+    except json.JSONDecodeError as exc:
+        print(f"error: invalid JSON in owner map file: {exc}", file=sys.stderr)
+        sys.exit(2)
+
+
 def _cmd_ownership(args: argparse.Namespace) -> int:
-    plan_text = Path(args.plan).read_text()
+    plan_path = Path(args.plan)
+    if not plan_path.exists():
+        print(f"error: plan file not found: {args.plan}", file=sys.stderr)
+        return 2
+
+    plan_text = plan_path.read_text()
     changes = parse_plan_text(plan_text)
     report = build_report(changes)
 
     owner_map: dict = {}
     if args.owner_map:
-        owner_map = json.loads(Path(args.owner_map).read_text())
+        owner_map = _load_owner_map(args.owner_map)
 
     ownership = build_ownership(report, owner_map)
 
