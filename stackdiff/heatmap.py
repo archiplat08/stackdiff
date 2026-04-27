@@ -20,6 +20,13 @@ class HeatmapEntry:
         """True when this resource changed more than once."""
         return self.change_count > 1
 
+    @property
+    def dominant_action(self) -> str:
+        """Return the most frequently occurring action for this resource."""
+        if not self.action_counts:
+            return "unknown"
+        return max(self.action_counts, key=lambda a: self.action_counts[a])
+
 
 @dataclass
 class HeatmapReport:
